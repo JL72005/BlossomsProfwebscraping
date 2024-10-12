@@ -1,71 +1,52 @@
 import requests
+import types
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import csv
 import regex
+import requests
+from bs4 import BeautifulSoup
 
-def getIndividualInfo(url=""):
+import requests
+from bs4 import BeautifulSoup
+
+def getDepartmentFaculty(url=""):
     response = requests.get(url)
 
     # Parse the page content
     soup = BeautifulSoup(response.content, "html.parser")
 
-    #gets the contact information and basic info from BC prof website 
-    sideBars = soup.find("div", class_="sidebar")
-    content = regex.sub(r'\n+', '\n', sideBars.text)
-    contentList = content.split('\n')
-    current_section = None
+    facultyInfo = []
 
-    individualFaculty = {
-        "name": None,
-        "contact": {},
-        "education": [],
-        "courses": []
-    }
+    # Find all elements with the class 'profile-link profile-link-advanced'
+    links = soup.find_all('a', href=True)
 
-    for item in contentList:
-        item = item.strip()  # Strip any excess whitespace
+    for link in links:
+        if 'profile' in link['href']:
+            print(link['href'])
+    
+    return [link['href'] for link in links if 'profile' in link['href']]
 
-        if not item:
-            continue
+def getDepartments(url=""):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
 
-        # Check for name and title
-        if individualFaculty["name"] is None and "Ph.D." in item:
-            individualFaculty["name"] = contentList[contentList.index(item) - 1] + " " + item
-            continue
+    # Target the specific section of the webpage that lists departments
+    department_links = soup.find_all('a', class_='button-primary')  # Adjust as per the HTML structure
+    # Print the href attribute of each department link
+    for link in department_links:
+        href = link.get('href')
+        if href:
+            print(href)
+    
+    return [link.get('href')+'/people/faculty/' for link in department_links]
 
-        # Switch sections based on markers
-        if item == 'Contact':
-            current_section = 'contact'
-            continue
-        elif item == 'Education':
-            current_section = 'education'
-            continue
-        elif item == 'Courses':
-            current_section = 'courses'
-            continue
-        elif item == 'CV or Resume':
-            current_section = None
-            continue
-
-        # Populate the dictionary based on the current section
-        if current_section == 'contact':
-            if 'Telephone' in item:
-                individualFaculty['contact']['telephone'] = item.split(': ')[1]
-            elif 'Email' in item:
-                individualFaculty['contact']['email'] = item.split(': ')[1]
-            else:
-                individualFaculty['contact']['office'] = item
-        elif current_section == 'education':
-            individualFaculty['education'].append(item)
-        elif current_section == 'courses':
-            individualFaculty['courses'].append(item)
-
-    # Output the parsed dictionary
-    print(individualFaculty)
-
-    #Introduction paragraph
-    intro = soup.find("div", class_ = "bio-container")
-    print(intro.text)
-
-    return individualFaculty, intro
+# Call the function with the target URL
+# getDepartmentFaculty("https://www.bu.edu/afam/people/faculty/")
+# getDepartmentFaculty("https://www.bu.edu/mcbb/people/faculty/")
+links = getDepartments("https://www.bu.edu/cas/departments/")
+with open('buLinks.txt', 'w') as file:
+    for link in links:
+        facLinks = getDepartmentFaculty(link)
+        for fac in facLinks:
+            file.write(fac+'\n')
